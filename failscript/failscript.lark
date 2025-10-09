@@ -1,0 +1,98 @@
+?start: _friendly{statement, ";"}
+
+?statement: (NAME ":")? guard? block
+           | "BEGIN" block
+           | "END" block
+           | fndef
+           | fncall
+           | assignment
+           | test
+           | cond
+
+?guard: REGEX | bool_expn
+
+test: ite | cond
+
+?ite: cond_check thenstmt elsestmt?
+?cond_check: "if" bool_expn
+?thenstmt: "then" statement -> then
+?elsestmt: "else" statement -> else
+
+?case: "(" cond_check ")" thenstmt
+cond: "one" "{" _friendly{case, ";"} "}" elsestmt?
+
+?cmp: _proper{expn, LE} | _proper{expn, GE} | (expn EQ expn) | (expn RE expn)
+?bool_expn: _proper{cmp, BOOL} -> if
+
+?ternary: bool_expn "?" consequent ":" alternative
+
+?condition: cmp
+consequent: expn -> then
+alternative: expn -> else
+
+assignment: VARIABLE BECOMES expn
+
+VARIABLE: NAME
+
+LITERAL: STRING | NUMBER | REGEX
+
+fndef: "fn" NAME paramdef BECOMES statement
+
+?block_body: _friendly{statement, ";"}
+
+?block: seq | par
+seq: "seq" "[" block_body "]"
+   | "[" block_body "]"
+par: "par" "{" block_body "}"
+
+paramdef: NAME | DFLTNAME | paramdefs
+paramdefs: "(" _proper{NAME, ","} ("," _proper{DFLTNAME, ","})? ("," "..." NAME)? ")"
+DFLTNAME: NAME BECOMES LITERAL
+
+?expn: term
+      | ternary
+
+?term: product
+     | product "+" product -> add
+     | product "-" product -> sub
+
+?product: exponent
+        | exponent "*" exponent -> mul
+        | exponent "/" exponent -> div
+
+?exponent: atom
+         | atom "**" atom -> exp
+
+?atom: LITERAL
+     | VARIABLE
+     | fncall
+     | brackets
+
+?brackets: "(" expn ")"
+
+?fncall: NAME params -> call
+
+?params: expn
+       | "(" _proper{expn, ","} ")"
+
+NOT: "not"
+BOOL: "and" | "or"
+LE: "<=" | "<"
+GE: ">=" | ">"
+EQ: "==" | "is" "not"? | "not"? "in" | "!="
+RE: "~" | "!~"
+BECOMES: "="
+
+REGEX: / \/ [^\/]+ \/ [a-z]* /msx
+
+_between{l, x, r}: l x r
+_proper{x, sep}: x (sep x)*
+_friendly{x, sep}: _proper{x, sep} sep?
+
+%import common.ESCAPED_STRING -> STRING
+%import common.SIGNED_NUMBER -> NUMBER
+%import common.CNAME -> NAME
+%import common.WS
+%ignore WS
+%import common.NEWLINE
+%ignore NEWLINE
