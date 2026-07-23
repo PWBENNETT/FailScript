@@ -1,9 +1,13 @@
-?start: _friendly{statement, ";"}
+?start: _friendly{outer_stmt, ";"}
 
-?statement: (NAME ":")? guard? block
+
+
+?outer_stmt: (NAME ":")? guard? block
            | "BEGIN" block
            | "END" block
-           | fndef
+           | statement 
+
+?statement: fndef
            | fncall
            | assignment
            | test
@@ -80,8 +84,14 @@ BOOL: "and" | "or"
 LE: "<=" | "<"
 GE: ">=" | ">"
 EQ: "==" | "is" "not"? | "not"? "in" | "!="
+MEM: "not"? "of" NAME -> is_subclass
+   | "not"? "compatible" "with" NAME
+   | "not"? "comparable" "to" NAME
 RE: "~" | "!~"
 BECOMES: "="
+DEFINED_AS: ":="
+RECV: "<-"
+SEND: "->"
 
 REGEX: / \/ [^\/]+ \/ [a-z]* /msx
 
