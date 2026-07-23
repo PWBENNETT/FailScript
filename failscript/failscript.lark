@@ -1,17 +1,15 @@
 ?start: _friendly{outer_stmt, ";"}
 
-
-
 ?outer_stmt: (NAME ":")? guard? block
            | "BEGIN" block
            | "END" block
            | statement 
 
 ?statement: fndef
-           | fncall
-           | assignment
-           | test
-           | cond
+          | fncall
+          | assignment
+          | test
+          | cond
 
 ?guard: REGEX | bool_expn
 
@@ -22,10 +20,10 @@ test: ite | cond
 ?thenstmt: "then" statement -> then
 ?elsestmt: "else" statement -> else
 
-?case: "(" cond_check ")" thenstmt
-cond: "one" "{" _friendly{case, ";"} "}" elsestmt?
+?case: bool_expn MAPS_TO statement
+cond: "cond" "{" _friendly{case, ","} "}" elsestmt?
 
-?cmp: _proper{expn, LE} | _proper{expn, GE} | (expn EQ expn) | (expn RE expn)
+?cmp: _proper{expn, LE} | _proper{expn, GE} | (expn EQ expn) | (expn RE expn) | NOT 
 ?bool_expn: _proper{cmp, BOOL} -> if
 
 ?ternary: bool_expn "?" consequent ":" alternative
@@ -52,9 +50,10 @@ par: "par" "{" block_body "}"
 paramdef: NAME | DFLTNAME | paramdefs
 paramdefs: "(" _proper{NAME, ","} ("," _proper{DFLTNAME, ","})? ("," "..." NAME)? ")"
 DFLTNAME: NAME BECOMES LITERAL
+DEFNAME: "def" NAME params? DEFINED_AS block
 
 ?expn: term
-      | ternary
+     | ternary
 
 ?term: product
      | product "+" product -> add
@@ -64,8 +63,8 @@ DFLTNAME: NAME BECOMES LITERAL
         | exponent "*" exponent -> mul
         | exponent "/" exponent -> div
 
-?exponent: atom
-         | atom "**" atom -> exp
+?exponent: fncall
+         | fncall "**" fncall -> exp
 
 ?atom: LITERAL
      | VARIABLE
@@ -73,8 +72,9 @@ DFLTNAME: NAME BECOMES LITERAL
      | brackets
 
 ?brackets: "(" expn ")"
+?boolbracs: "(" bool_expn ")"
 
-?fncall: NAME params -> call
+?fncall: NAME atom -> call
 
 ?params: expn
        | "(" _proper{expn, ","} ")"
@@ -85,14 +85,14 @@ LE: "<=" | "<"
 GE: ">=" | ">"
 EQ: "==" | "is" "not"? | "not"? "in" | "!="
 MEM: "not"? "of" NAME -> is_subclass
-   | "not"? "compatible" "with" NAME
-   | "not"? "comparable" "to" NAME
+   | "not"? "compatible" "with" NAME -> is_fully_compat
+   | "not"? "comparable" "to" NAME -> can_coerce_both_to_same_prmtv
 RE: "~" | "!~"
 BECOMES: "="
 DEFINED_AS: ":="
 RECV: "<-"
 SEND: "->"
-
+MAPS_TO: "=>"
 REGEX: / \/ [^\/]+ \/ [a-z]* /msx
 
 _between{l, x, r}: l x r
